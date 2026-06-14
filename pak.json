@@ -1,12 +1,13 @@
 {
   "name": "LocalSend",
-  "version": "v0.1.0",
+  "version": "v0.1.1",
   "type": "TOOL",
   "description": "Receive files from any LocalSend device on your network. Files land in SD_ROOT/LocalSend/.",
   "author": "aaronearles",
   "repo_url": "https://github.com/aaronearles/nextui-localsend",
   "release_filename": "LocalSend.pak.zip",
   "changelog": {
+    "v0.1.1": "Fix lockup on exit: kill background receiver when shell exits; add startup crash detection",
     "v0.1.0": "Initial release"
   },
   "platforms": [
