@@ -1,70 +1,54 @@
 #!/bin/sh
 DIR="$(dirname "$0")"
 PLATFORM="${PLATFORM:-tg5040}"
-SDCARD="/mnt/SDCARD"
+SDCARD="${SDCARD_PATH:-/mnt/SDCARD}"
 LANDING_DIR="$SDCARD/LocalSend"
 LOCALSEND="$DIR/bin/$PLATFORM/localsend"
-LOGS_PATH="${LOGS_PATH:-/tmp}"
-LOG="$LOGS_PATH/localsend.log"
+LOG="${LOGS_PATH:+$LOGS_PATH/localsend.log}"
+LOG="${LOG:-$SDCARD/LocalSend/localsend.log}"
 DEVICE_NAME="TrimUI-Brick"
 PID_FILE="/tmp/localsend_pak.pid"
+LOGO="$SDCARD/.system/res/logo.png"
 
-LSPID=""
-
-cleanup() {
-    if [ -n "$LSPID" ]; then
-        kill "$LSPID" 2>/dev/null
-        LSPID=""
-    fi
-    rm -f "$PID_FILE"
-    echo "$(date): Stopped." >> "$LOG"
+log() {
+    mkdir -p "$(dirname "$LOG")" 2>/dev/null
+    echo "$(date '+%Y-%m-%d %H:%M:%S'): $*" >> "$LOG"
 }
-trap cleanup EXIT
-
-_find_tool() {
-    name="$1"
-    if command -v "$name" >/dev/null 2>&1; then
-        command -v "$name"; return 0
-    fi
-    for d in \
-        "/mnt/SDCARD/.system/$PLATFORM/bin" \
-        "/usr/trimui/bin" \
-        "/opt/trimui/bin" \
-        "$DIR/../../.system/$PLATFORM/bin"; do
-        [ -x "$d/$name" ] && { echo "$d/$name"; return 0; }
-    done
-    return 1
-}
-
-MINUI_PRESENTER=$(_find_tool minui-presenter 2>/dev/null)
-MINUI_LIST=$(_find_tool minui-list 2>/dev/null)
-
-echo "$(date): presenter=${MINUI_PRESENTER:-none} list=${MINUI_LIST:-none}" >> "$LOG"
 
 show_message() {
     msg="$1"
-    timeout="${2:-4}"
-    if [ -n "$MINUI_PRESENTER" ]; then
-        printf '%s' "$msg" | "$MINUI_PRESENTER" --stdin --timeout "$timeout"
+    timeout="${2:-3}"
+    if command -v show2.elf >/dev/null 2>&1 && [ -f "$LOGO" ]; then
+        show2.elf --mode=simple --image="$LOGO" --text="$msg" --timeout="$timeout"
     else
-        echo "$msg" && sleep "$timeout"
+        echo "$msg" >&2
+        sleep "$timeout"
     fi
 }
 
 mkdir -p "$LANDING_DIR"
 
+# Toggle: if receiver is already running, stop it
 if [ -f "$PID_FILE" ]; then
     old_pid=$(cat "$PID_FILE")
-    kill "$old_pid" 2>/dev/null
+    if kill -0 "$old_pid" 2>/dev/null; then
+        log "Stopping receiver (PID $old_pid)"
+        kill "$old_pid" 2>/dev/null
+        rm -f "$PID_FILE"
+        log "Stopped."
+        show_message "LocalSend stopped" 3
+        exit 0
+    fi
     rm -f "$PID_FILE"
 fi
 
+# Start receiver
 if [ ! -x "$LOCALSEND" ]; then
-    show_message "ERROR: localsend binary not found"
+    show_message "ERROR: localsend binary not found" 4
     exit 1
 fi
 
-echo "$(date): Starting LocalSend receiver -> $LANDING_DIR" >> "$LOG"
+log "Starting receiver -> $LANDING_DIR"
 
 "$LOCALSEND" recv \
     --devname "$DEVICE_NAME" \
@@ -76,20 +60,12 @@ echo "$LSPID" > "$PID_FILE"
 
 sleep 2
 if ! kill -0 "$LSPID" 2>/dev/null; then
-    show_message "ERROR: LocalSend failed to start\nCheck: $LOG"
+    rm -f "$PID_FILE"
+    log "Failed to start"
+    show_message "LocalSend failed to start" 4
     exit 1
 fi
 
-if [ -n "$MINUI_LIST" ]; then
-    printf 'Stop Receiver\n' | "$MINUI_LIST" \
-        --title "LocalSend — send files to $DEVICE_NAME" \
-        --stdin 2>/dev/null
-elif [ -n "$MINUI_PRESENTER" ]; then
-    printf 'LocalSend running\nDevice: %s\nSaving to: %s\n\nOpen LocalSend on your phone.\nPress any button to stop.' \
-        "$DEVICE_NAME" "$LANDING_DIR" \
-        | "$MINUI_PRESENTER" --stdin --timeout 3600
-else
-    while kill -0 "$LSPID" 2>/dev/null; do
-        sleep 5 & wait $!
-    done
-fi
+log "Started (PID $LSPID)"
+show_message "LocalSend started. Send files to $DEVICE_NAME. Launch again to stop." 5
+exit 0
