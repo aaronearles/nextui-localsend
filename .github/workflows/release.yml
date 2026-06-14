@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. v0.1.0)'
+        required: true
+        default: 'v0.1.0'
 
 jobs:
   build:
@@ -32,6 +38,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
           files: dist/LocalSend.pak.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
