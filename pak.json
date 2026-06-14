@@ -1,0 +1,15 @@
+{
+  "name": "LocalSend",
+  "version": "v0.1.0",
+  "type": "TOOL",
+  "description": "Receive files from any LocalSend device on your network. Files land in SD_ROOT/LocalSend/.",
+  "author": "aaronearles",
+  "repo_url": "https://github.com/aaronearles/nextui-localsend",
+  "release_filename": "LocalSend.pak.zip",
+  "changelog": {
+    "v0.1.0": "Initial release"
+  },
+  "platforms": [
+    "tg5040"
+  ]
+}
