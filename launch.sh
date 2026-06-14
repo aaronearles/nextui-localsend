@@ -53,7 +53,6 @@ log "Starting receiver -> $LANDING_DIR"
 "$LOCALSEND" recv \
     --devname "$DEVICE_NAME" \
     --dir "$LANDING_DIR" \
-    --https=false \
     >> "$LOG" 2>&1 &
 LSPID=$!
 echo "$LSPID" > "$PID_FILE"
